@@ -1,5 +1,5 @@
-﻿using System.Text;
-using Util.Datas.Matedatas;
+﻿using Util.Datas.Matedatas;
+using Util.Datas.Sql.Queries;
 using Util.Datas.Sql.Queries.Builders.Abstractions;
 using Util.Datas.Sql.Queries.Builders.Core;
 
@@ -17,6 +17,15 @@ namespace Util.Datas.Dapper.MySql {
         }
 
         /// <summary>
+        /// 复制Sql生成器
+        /// </summary>
+        public override ISqlBuilder Clone() {
+            var sqlBuilder = new MySqlBuilder();
+            sqlBuilder.Clone( this );
+            return sqlBuilder;
+        }
+
+        /// <summary>
         /// 获取Sql方言
         /// </summary>
         protected override IDialect GetDialect() {
@@ -31,16 +40,24 @@ namespace Util.Datas.Dapper.MySql {
         }
 
         /// <summary>
+        /// 创建From子句
+        /// </summary>
+        protected override IFromClause CreateFromClause() {
+            return new MySqlFromClause( this, GetDialect(), EntityResolver, AliasRegister );
+        }
+
+        /// <summary>
+        /// 创建Join子句
+        /// </summary>
+        protected override IJoinClause CreateJoinClause() {
+            return new MySqlJoinClause( this, GetDialect(), EntityResolver, AliasRegister );
+        }
+
+        /// <summary>
         /// 创建分页Sql
         /// </summary>
-        protected override void CreatePagerSql( StringBuilder result ) {
-            AppendSql( result, GetSelect() );
-            AppendSql( result, GetFrom() );
-            AppendSql( result, GetJoin() );
-            AppendSql( result, GetWhere() );
-            AppendSql( result, GetGroupBy() );
-            AppendSql( result, GetOrderBy() );
-            result.Append( $"Limit {GetPager().GetSkipCount()}, {GetPager().PageSize}" );
+        protected override string CreateLimitSql() {
+            return $"Limit {GetOffsetParam()}, {GetLimitParam()}";
         }
     }
 }

@@ -18,10 +18,23 @@ namespace Util.Datas.Sql.Queries.Builders.Core {
         /// <param name="schema">架构</param>
         /// <param name="alias">别名</param>
         /// <param name="raw">使用原始值</param>
-        public JoinItem( string joinType, string table, string schema = null, string alias = null, bool raw = false ) {
+        /// <param name="isSplit">是否用句点分割表名</param>
+        public JoinItem( string joinType, string table, string schema = null, string alias = null, bool raw = false, bool isSplit = true ) {
             JoinType = joinType;
-            Table = new SqlItem( table, schema, alias, raw );
+            Table = new SqlItem( table, schema, alias, raw, isSplit );
             Conditions = new List<List<OnItem>>();
+        }
+
+        /// <summary>
+        /// 初始化表连接项
+        /// </summary>
+        /// <param name="joinType">连接类型</param>
+        /// <param name="table">表</param>
+        /// <param name="conditions">连接条件列表</param>
+        public JoinItem( string joinType, SqlItem table, List<List<OnItem>> conditions ) {
+            JoinType = joinType;
+            Table = table;
+            Conditions = conditions;
         }
 
         /// <summary>
@@ -75,9 +88,16 @@ namespace Util.Datas.Sql.Queries.Builders.Core {
         }
 
         /// <summary>
+        /// 复制副本
+        /// </summary>
+        public JoinItem Clone() {
+            return new JoinItem( JoinType, Table, Conditions.Select( t => new List<OnItem>( t ) ).ToList() );
+        }
+
+        /// <summary>
         /// 获取Join语句
         /// </summary>
-        public string ToSql( IDialect dialect ) {
+        public string ToSql( IDialect dialect = null ) {
             var table = Table.ToSql( dialect );
             return $"{JoinType} {table}{GetOn( dialect )}";
         }

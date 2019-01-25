@@ -3,14 +3,20 @@ using System.Linq.Expressions;
 
 namespace Util.Datas.Sql.Queries.Builders.Abstractions {
     /// <summary>
-    /// 排序子句
+    /// Order By子句
     /// </summary>
     public interface IOrderByClause {
+        /// <summary>
+        /// 复制Order By子句
+        /// </summary>
+        /// <param name="register">实体别名注册器</param>
+        IOrderByClause Clone( IEntityAliasRegister register );
         /// <summary>
         /// 排序
         /// </summary>
         /// <param name="order">排序列表</param>
-        void OrderBy( string order );
+        /// <param name="tableAlias">表别名</param>
+        void OrderBy( string order, string tableAlias = null );
         /// <summary>
         /// 排序
         /// </summary>
@@ -23,6 +29,11 @@ namespace Util.Datas.Sql.Queries.Builders.Abstractions {
         /// </summary>
         /// <param name="sql">Sql语句</param>
         void AppendSql( string sql );
+        /// <summary>
+        /// 验证
+        /// </summary>
+        /// <param name="isPage">是否分页</param>
+        void Validate( bool isPage );
         /// <summary>
         /// 获取Sql
         /// </summary>

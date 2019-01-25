@@ -50,6 +50,8 @@ namespace Util.Datas.Sql.Queries.Builders.Internal {
         /// <param name="expression">表达式</param>
         /// <param name="type">实体类型</param>
         public string GetColumn( Expression expression, Type type ) {
+            if ( expression == null )
+                return null;
             return GetColumn( _resolver.GetColumn( expression, type ), type );
         }
 
@@ -58,6 +60,8 @@ namespace Util.Datas.Sql.Queries.Builders.Internal {
         /// </summary>
         /// <param name="expression">列名表达式</param>
         public string GetColumn<TEntity>( Expression<Func<TEntity, object>> expression ) {
+            if ( expression == null )
+                return null;
             return GetColumn( _resolver.GetColumn( expression ), typeof( TEntity ) );
         }
 
@@ -67,6 +71,8 @@ namespace Util.Datas.Sql.Queries.Builders.Internal {
         /// <param name="column">列名</param>
         /// <param name="type">实体类型</param>
         public string GetColumn( string column, Type type ) {
+            if ( string.IsNullOrWhiteSpace( column ) )
+                return column;
             return new SqlItem( column, _register.GetAlias( type ) ).ToSql( _dialect );
         }
 
@@ -75,16 +81,34 @@ namespace Util.Datas.Sql.Queries.Builders.Internal {
         /// </summary>
         /// <param name="column">列名</param>
         public string GetColumn( string column ) {
+            if( string.IsNullOrWhiteSpace( column ) )
+                return column;
             return new SqlItem( column ).ToSql( _dialect );
+        }
+
+        /// <summary>
+        /// 获取值
+        /// </summary>
+        /// <returns>表达式</returns>
+        public object GetValue( Expression expression ) {
+            if ( expression == null )
+                return null;
+            var result = Lambda.GetValue( expression );
+            if ( result == null )
+                return null;
+            var type = result.GetType();
+            if( type.IsEnum )
+                return Util.Helpers.Enum.GetValue( type, result );
+            return result;
         }
 
         /// <summary>
         /// 创建查询条件并添加参数
         /// </summary>
-        /// <param name="expression">列名</param>
+        /// <param name="expression">表达式</param>
         /// <param name="type">实体类型</param>
         public ICondition CreateCondition( Expression expression, Type type ) {
-            return CreateCondition( GetColumn( expression, type ), Lambda.GetValue( expression ), Lambda.GetOperator( expression ).SafeValue() );
+            return CreateCondition( GetColumn( expression, type ), GetValue( expression ), Lambda.GetOperator( expression ).SafeValue() );
         }
 
         /// <summary>
@@ -97,17 +121,39 @@ namespace Util.Datas.Sql.Queries.Builders.Internal {
             if( string.IsNullOrWhiteSpace( column ) )
                 throw new ArgumentNullException( nameof( column ) );
             column = GetColumn( column );
-            if( @operator == Operator.Contains && value != null && Reflection.IsCollection( value.GetType() ) )
+            if( IsInCondition( @operator, value ) )
                 return CreateInCondition( column, value as IEnumerable );
+            if( IsNotInCondition( @operator, value ) )
+                return CreateInCondition( column, value as IEnumerable, true );
             var paramName = GenerateParamName( value, @operator );
             _parameterManager.Add( paramName, value, @operator );
             return SqlConditionFactory.Create( column, paramName, @operator );
         }
 
         /// <summary>
+        /// 是否In条件
+        /// </summary>
+        private bool IsInCondition( Operator @operator, object value ) {
+            if( @operator == Operator.In )
+                return true;
+            if( @operator == Operator.Contains && value != null && Reflection.IsCollection( value.GetType() ) )
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 是否Not In条件
+        /// </summary>
+        private bool IsNotInCondition( Operator @operator, object value ) {
+            if( @operator == Operator.NotIn )
+                return true;
+            return false;
+        }
+
+        /// <summary>
         /// 创建In条件
         /// </summary>
-        private ICondition CreateInCondition( string column, IEnumerable values ) {
+        private ICondition CreateInCondition( string column, IEnumerable values, bool notIn = false ) {
             if( values == null )
                 return NullCondition.Instance;
             var paramNames = new List<string>();
@@ -116,6 +162,8 @@ namespace Util.Datas.Sql.Queries.Builders.Internal {
                 paramNames.Add( name );
                 _parameterManager.Add( name, value );
             }
+            if( notIn )
+                return new NotInCondition( column, paramNames );
             return new InCondition( column, paramNames );
         }
 

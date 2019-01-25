@@ -15,6 +15,12 @@ namespace Util.Tests.Datas.Sql {
             Assert.Equal( "a",item.Name );
             Assert.True( item.Prefix.IsEmpty() );
             Assert.True( item.Alias.IsEmpty() );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.True( copy.Prefix.IsEmpty() );
+            Assert.True( copy.Alias.IsEmpty() );
         }
 
         /// <summary>
@@ -26,6 +32,12 @@ namespace Util.Tests.Datas.Sql {
             Assert.Equal( "a", item.Name );
             Assert.Equal( "t", item.Prefix );
             Assert.True( item.Alias.IsEmpty() );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.Equal( "t", copy.Prefix );
+            Assert.True( copy.Alias.IsEmpty() );
         }
 
         /// <summary>
@@ -37,6 +49,12 @@ namespace Util.Tests.Datas.Sql {
             Assert.Equal( "a", item.Name );
             Assert.Equal( "t", item.Prefix );
             Assert.True( item.Alias.IsEmpty() );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.Equal( "t", copy.Prefix );
+            Assert.True( copy.Alias.IsEmpty() );
         }
 
         /// <summary>
@@ -48,6 +66,12 @@ namespace Util.Tests.Datas.Sql {
             Assert.Equal( "a", item.Name );
             Assert.Equal( "t", item.Prefix );
             Assert.Equal( "b",item.Alias );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.Equal( "t", copy.Prefix );
+            Assert.Equal( "b", copy.Alias );
         }
 
         /// <summary>
@@ -59,6 +83,12 @@ namespace Util.Tests.Datas.Sql {
             Assert.Equal( "a", item.Name );
             Assert.True( item.Prefix.IsEmpty() );
             Assert.Equal( "b", item.Alias );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.True( copy.Prefix.IsEmpty() );
+            Assert.Equal( "b", copy.Alias );
         }
 
         /// <summary>
@@ -70,6 +100,12 @@ namespace Util.Tests.Datas.Sql {
             Assert.Equal( "a", item.Name );
             Assert.True( item.Prefix.IsEmpty() );
             Assert.Equal( "c", item.Alias );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.True( copy.Prefix.IsEmpty() );
+            Assert.Equal( "c", copy.Alias );
         }
 
         /// <summary>
@@ -81,6 +117,46 @@ namespace Util.Tests.Datas.Sql {
             Assert.Equal( "a", item.Name );
             Assert.Equal( "d", item.Prefix );
             Assert.Equal( "c", item.Alias );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.Equal( "d", copy.Prefix );
+            Assert.Equal( "c", copy.Alias );
+        }
+
+        /// <summary>
+        /// 只设置名称 - 不分割名称
+        /// </summary>
+        [Fact]
+        public void Test_8() {
+            var item = new SqlItem( "a",isSplit:false );
+            Assert.Equal( "a", item.Name );
+            Assert.True( item.Prefix.IsEmpty() );
+            Assert.True( item.Alias.IsEmpty() );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a", copy.Name );
+            Assert.True( copy.Prefix.IsEmpty() );
+            Assert.True( copy.Alias.IsEmpty() );
+        }
+
+        /// <summary>
+        /// 只设置名称 - 不分割名称 - 名称带句点
+        /// </summary>
+        [Fact]
+        public void Test_9() {
+            var item = new SqlItem( "a.b", isSplit: false );
+            Assert.Equal( "a.b", item.Name );
+            Assert.True( item.Prefix.IsEmpty() );
+            Assert.True( item.Alias.IsEmpty() );
+
+            //测试复制副本
+            var copy = item.Clone();
+            Assert.Equal( "a.b", copy.Name );
+            Assert.True( copy.Prefix.IsEmpty() );
+            Assert.True( copy.Alias.IsEmpty() );
         }
     }
 }

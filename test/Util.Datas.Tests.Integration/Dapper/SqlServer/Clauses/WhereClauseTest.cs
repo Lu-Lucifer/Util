@@ -35,7 +35,7 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
         /// </summary>
         public WhereClauseTest() {
             _parameterManager = new ParameterManager( new SqlServerDialect() );
-            _clause = new WhereClause( new SqlServerDialect(), new EntityResolver(), new EntityAliasRegister(), _parameterManager );
+            _clause = new WhereClause( null, new SqlServerDialect(), new EntityResolver(), new EntityAliasRegister(), _parameterManager );
         }
 
         /// <summary>
@@ -64,13 +64,157 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
         #region Or(连接查询条件)
 
         /// <summary>
-        /// 连接查询条件
+        /// Or查询条件
         /// </summary>
         [Fact]
         public void TestOr() {
             _clause.Where( "Age", 1 );
             _clause.Or( new LessCondition( "a", "@a" ) );
             Assert.Equal( "Where ([Age]=@_p_0 Or a<@a)", GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - 一个条件
+        /// </summary>
+        [Fact]
+        public void TestOr_2() {
+            //结果
+            var result = new String();
+            result.Append( "Where [Email] In (@_p_0,@_p_1)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.Or<Sample>( t => list.Contains( t.Email ) );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - 2个条件
+        /// </summary>
+        [Fact]
+        public void TestOr_3() {
+            //结果
+            var result = new String();
+            result.Append( "Where ([Email] In (@_p_0,@_p_1) Or [Url]=@_p_2)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.Or<Sample>( t => list.Contains( t.Email ), t => t.Url == "a" );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - 2个条件 - 参数值为空时添加条件
+        /// </summary>
+        [Fact]
+        public void TestOr_4() {
+            //结果
+            var result = new String();
+            result.Append( "Where ([Email] In (@_p_0,@_p_1) Or [Url]=@_p_2)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.Or<Sample>( t => list.Contains( t.Email ), t => t.Url == "" );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - And和Or混合添加条件
+        /// </summary>
+        [Fact]
+        public void TestOr_5() {
+            //结果
+            var result = new String();
+            result.Append( "Where (([Email]=@_p_0 Or " );
+            result.Append( "[Email] In (@_p_1,@_p_2)) Or [Url]=@_p_3) " );
+            result.Append( "And [Url]=@_p_4" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.Where<Sample>( t => t.Email == "b" );
+            _clause.Or<Sample>( t => list.Contains( t.Email ), t => t.Url == "a" );
+            _clause.Where<Sample>( t => t.Url == "c" );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - 一个条件
+        /// </summary>
+        [Fact]
+        public void TestOrIfNotEmpty_1() {
+            //结果
+            var result = new String();
+            result.Append( "Where [Email] In (@_p_0,@_p_1)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.OrIfNotEmpty<Sample>( t => list.Contains( t.Email ) );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - 2个条件
+        /// </summary>
+        [Fact]
+        public void TestOrIfNotEmpty_2() {
+            //结果
+            var result = new String();
+            result.Append( "Where ([Email] In (@_p_0,@_p_1) Or [Url]=@_p_2)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.OrIfNotEmpty<Sample>( t => list.Contains( t.Email ), t => t.Url == "a" );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - 2个条件 - 参数值为空时不添加条件
+        /// </summary>
+        [Fact]
+        public void TestOrIfNotEmpty_3() {
+            //结果
+            var result = new String();
+            result.Append( "Where [Email] In (@_p_0,@_p_1)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.OrIfNotEmpty<Sample>( t => list.Contains( t.Email ), t => t.Url == "" );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// Or查询条件 - lambda - And和Or混合添加条件
+        /// </summary>
+        [Fact]
+        public void TestOrIfNotEmpty_4() {
+            //结果
+            var result = new String();
+            result.Append( "Where (([Email]=@_p_0 Or " );
+            result.Append( "[Email] In (@_p_1,@_p_2)) Or [Url]=@_p_3) " );
+            result.Append( "And [Url]=@_p_4" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.Where<Sample>( t => t.Email == "b" );
+            _clause.OrIfNotEmpty<Sample>( t => list.Contains( t.Email ), t => t.Url == "a" );
+            _clause.Where<Sample>( t => t.Url == "c" );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
         }
 
         #endregion
@@ -119,7 +263,7 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
         /// </summary>
         [Fact]
         public void TestWhere_5() {
-            _clause = new WhereClause( new SqlServerDialect(), new TestEntityResolver(), new TestEntityAliasRegister(), new ParameterManager( new SqlServerDialect() ) );
+            _clause = new WhereClause(null, new SqlServerDialect(), new TestEntityResolver(), new TestEntityAliasRegister(), new ParameterManager( new SqlServerDialect() ) );
             _clause.Where<Sample>( t => t.Email, "a" );
             Assert.Equal( "Where [as_Sample].[t_Email]=@_p_0", GetSql() );
         }
@@ -138,7 +282,7 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
         /// </summary>
         [Fact]
         public void TestWhere_7() {
-            _clause = new WhereClause( new SqlServerDialect(), new TestEntityResolver(), new TestEntityAliasRegister(), new ParameterManager( new SqlServerDialect() ) );
+            _clause = new WhereClause(null, new SqlServerDialect(), new TestEntityResolver(), new TestEntityAliasRegister(), new ParameterManager( new SqlServerDialect() ) );
             _clause.Where<Sample>( t => t.Email == "a" );
             Assert.Equal( "Where [as_Sample].[t_Email]=@_p_0", GetSql() );
         }
@@ -293,64 +437,6 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
 
             //验证
             Assert.Equal( result.ToString(), GetSql() );
-        }
-
-        #endregion
-
-        #region WhereIf(设置条件)
-
-        /// <summary>
-        /// 设置条件 - 添加条件
-        /// </summary>
-        [Fact]
-        public void TestWhereIf_1() {
-            _clause.WhereIf( "Name", "a", true );
-            Assert.Equal( "Where [Name]=@_p_0", GetSql() );
-        }
-
-        /// <summary>
-        /// 设置条件 - 忽略条件
-        /// </summary>
-        [Fact]
-        public void TestWhereIf_2() {
-            _clause.WhereIf( "Name", "a", false );
-            Assert.Null( GetSql() );
-        }
-
-        /// <summary>
-        /// 设置条件 - 通过lambda设置列名  - 添加条件
-        /// </summary>
-        [Fact]
-        public void TestWhereIf_3() {
-            _clause.WhereIf<Sample>( t => t.Email, "a", true );
-            Assert.Equal( "Where [Email]=@_p_0", GetSql() );
-        }
-
-        /// <summary>
-        /// 设置条件 - 通过lambda设置列名  - 忽略条件
-        /// </summary>
-        [Fact]
-        public void TestWhereIf_4() {
-            _clause.WhereIf<Sample>( t => t.Email, "a", false );
-            Assert.Null( GetSql() );
-        }
-
-        /// <summary>
-        /// 设置条件 - 通过lambda设置列名 - 添加条件
-        /// </summary>
-        [Fact]
-        public void TestWhereIf_5() {
-            _clause.WhereIf<Sample>( t => t.Email == "a", true );
-            Assert.Equal( "Where [Email]=@_p_0", GetSql() );
-        }
-
-        /// <summary>
-        /// 设置条件 - 通过lambda设置列名 - 忽略条件
-        /// </summary>
-        [Fact]
-        public void TestWhereIf_6() {
-            _clause.WhereIf<Sample>( t => t.Email == "a", false );
-            Assert.Null( GetSql() );
         }
 
         #endregion
@@ -572,8 +658,63 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
             result.Append( "Where [user].[Email] In (@_p_0,@_p_1)" );
 
             //执行
-            var list = new [] { "a", "b" };
+            var list = new[] { "a", "b" };
             _clause.In( "user.Email", list );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        #endregion
+
+        #region NotIn
+
+        /// <summary>
+        /// 设置Not In条件
+        /// </summary>
+        [Fact]
+        public void TestNotIn_1() {
+            //结果
+            var result = new String();
+            result.Append( "Where [user].[Email] Not In (@_p_0,@_p_1)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.NotIn( "user.Email", list );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// 设置Not In条件 - lambda列名表达式
+        /// </summary>
+        [Fact]
+        public void TestNotIn_2() {
+            //结果
+            var result = new String();
+            result.Append( "Where [Email] Not In (@_p_0,@_p_1)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _clause.NotIn<Sample>( t => t.Email, list );
+
+            //验证
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// 设置Not In条件 - 数组
+        /// </summary>
+        [Fact]
+        public void TestNotIn_3() {
+            //结果
+            var result = new String();
+            result.Append( "Where [user].[Email] Not In (@_p_0,@_p_1)" );
+
+            //执行
+            var list = new[] { "a", "b" };
+            _clause.NotIn( "user.Email", list );
 
             //验证
             Assert.Equal( result.ToString(), GetSql() );
@@ -593,7 +734,7 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
             result.Append( "Where [a].[B]>=@_p_0 And [a].[B]<=@_p_1" );
 
             //执行
-            _clause.Between( "a.B", 1, 2,Boundary.Both );
+            _clause.Between( "a.B", 1, 2, Boundary.Both );
 
             //验证
             Assert.Equal( 1, _parameterManager.GetParams()["@_p_0"] );
@@ -732,7 +873,7 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
             //执行
             var min = DateTime.Parse( "2000-1-1 10:10:10" );
             var max = DateTime.Parse( "2000-1-2 10:10:10" );
-            _clause.Between( "a.B", min, max,true,null );
+            _clause.Between( "a.B", min, max, true, null );
 
             //验证
             Assert.Equal( min, _parameterManager.GetParams()["@_p_0"] );
@@ -796,6 +937,105 @@ namespace Util.Datas.Tests.Dapper.SqlServer.Clauses {
             Assert.Equal( 1, _parameterManager.GetParams()["@_p_0"] );
             Assert.Equal( 2, _parameterManager.GetParams()["@_p_1"] );
             Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// 测试范围查询 - 日期 - 不包含时间 - 最大值为空
+        /// </summary>
+        [Fact]
+        public void TestBetween_13() {
+            //结果
+            var result = new String();
+            result.Append( "Where [a].[B]>=@_p_0" );
+
+            //执行
+            var min = DateTime.Parse( "2000-1-1 10:10:10" );
+            _clause.Between( "a.B", min, null, false, null );
+
+            //验证
+            Assert.Equal( DateTime.Parse( "2000-1-1" ), _parameterManager.GetParams()["@_p_0"] );
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// 测试范围查询 - 日期 - 包含时间  - 最大值为空
+        /// </summary>
+        [Fact]
+        public void TestBetween_14() {
+            //结果
+            var result = new String();
+            result.Append( "Where [a].[B]>=@_p_0" );
+
+            //执行
+            var min = DateTime.Parse( "2000-1-1 10:10:10" );
+            _clause.Between( "a.B", min, null, true, null );
+
+            //验证
+            Assert.Equal( min, _parameterManager.GetParams()["@_p_0"] );
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// 测试范围查询 - 日期 - 不包含时间 - 最小值为空
+        /// </summary>
+        [Fact]
+        public void TestBetween_15() {
+            //结果
+            var result = new String();
+            result.Append( "Where [a].[B]<@_p_0" );
+
+            //执行
+            var max = DateTime.Parse( "2000-1-2 10:10:10" );
+            _clause.Between( "a.B", null, max, false, null );
+
+            //验证
+            Assert.Equal( DateTime.Parse( "2000-1-3" ), _parameterManager.GetParams()["@_p_0"] );
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        /// <summary>
+        /// 测试范围查询 - 日期 - 包含时间 - 最小值为空
+        /// </summary>
+        [Fact]
+        public void TestBetween_16() {
+            //结果
+            var result = new String();
+            result.Append( "Where [a].[B]<=@_p_0" );
+
+            //执行
+            var max = DateTime.Parse( "2000-1-2 10:10:10" );
+            _clause.Between( "a.B", null, max, true, null );
+
+            //验证
+            Assert.Equal( max, _parameterManager.GetParams()["@_p_0"] );
+            Assert.Equal( result.ToString(), GetSql() );
+        }
+
+        #endregion
+
+        #region Clone(复制副本)
+
+        /// <summary>
+        /// 复制副本
+        /// </summary>
+        [Fact]
+        public void TestClone_1() {
+            _clause.Where( "Name", "a" );
+
+            //复制副本
+            var copy = _clause.Clone( null, null, _parameterManager.Clone() );
+            Assert.Equal( "Where [Name]=@_p_0", GetSql() );
+            Assert.Equal( "Where [Name]=@_p_0", copy.ToSql() );
+
+            //修改副本
+            copy.Where( "Code",1 );
+            Assert.Equal( "Where [Name]=@_p_0", GetSql() );
+            Assert.Equal( "Where [Name]=@_p_0 And [Code]=@_p_1", copy.ToSql() );
+
+            //修改原对象
+            _clause.Where( "Age", 1 );
+            Assert.Equal( "Where [Name]=@_p_0 And [Age]=@_p_1", GetSql() );
+            Assert.Equal( "Where [Name]=@_p_0 And [Code]=@_p_1", copy.ToSql() );
         }
 
         #endregion

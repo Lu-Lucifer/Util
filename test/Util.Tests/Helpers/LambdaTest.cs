@@ -314,6 +314,9 @@ namespace Util.Tests.Helpers {
             var value = Guid.NewGuid();
             Expression<Func<Sample, bool>> expression4 = t => t.GuidValue == value;
             Assert.Equal( value, Lambda.GetValue( expression4 ) );
+
+            Expression<Func<Sample, bool>> expression5 = t => 1 == t.Test2.IntValue;
+            Assert.Equal( 1, Lambda.GetValue( expression5 ) );
         }
 
         /// <summary>
@@ -750,9 +753,18 @@ namespace Util.Tests.Helpers {
         /// </summary>
         [Fact]
         public void TestConstant() {
-            Expression<Func<Sample, int?>> property = t => t.NullableIntValue;
-            ConstantExpression constantExpression = Lambda.Constant( property, 1 );
+            var constantExpression = Lambda.Constant( 1 );
             Assert.Equal( typeof( int ), constantExpression.Type );
+        }
+
+        /// <summary>
+        /// 测试获取常量表达式
+        /// </summary>
+        [Fact]
+        public void TestConstant_2() {
+            Expression<Func<Sample, int?>> property = t => t.NullableIntValue;
+            var constantExpression = Lambda.Constant( 1 , property );
+            Assert.Equal( typeof( int? ), constantExpression.Type );
         }
 
         #endregion

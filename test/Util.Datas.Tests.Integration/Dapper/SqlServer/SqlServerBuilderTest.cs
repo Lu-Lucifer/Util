@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 using Util.Datas.Dapper.SqlServer;
+using Util.Datas.Queries;
 using Util.Datas.Tests.Samples;
 using Util.Datas.Tests.XUnitHelpers;
+using Util.Properties;
 using Xunit;
+using Xunit.Abstractions;
 using String = Util.Helpers.String;
 
 namespace Util.Datas.Tests.Dapper.SqlServer {
@@ -12,6 +16,10 @@ namespace Util.Datas.Tests.Dapper.SqlServer {
     /// </summary>
     public class SqlServerBuilderTest {
         /// <summary>
+        /// 输出工具
+        /// </summary>
+        private readonly ITestOutputHelper _output;
+        /// <summary>
         /// Sql Server Sql生成器
         /// </summary>
         private readonly SqlServerBuilder _builder;
@@ -19,7 +27,8 @@ namespace Util.Datas.Tests.Dapper.SqlServer {
         /// <summary>
         /// 测试初始化
         /// </summary>
-        public SqlServerBuilderTest() {
+        public SqlServerBuilderTest( ITestOutputHelper output ) {
+            _output = output;
             _builder = new SqlServerBuilder();
         }
 
@@ -792,7 +801,7 @@ namespace Util.Datas.Tests.Dapper.SqlServer {
             //执行
             _builder.Select<Sample>( t => t.Email )
                 .From<Sample>( "a" )
-                .Between( "a.B",1,2 );
+                .Between( "a.B", 1, 2 );
 
             //验证
             Assert.Equal( 1, _builder.GetParams()["@_p_0"] );
@@ -932,6 +941,364 @@ namespace Util.Datas.Tests.Dapper.SqlServer {
             Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
             Assert.Equal( "b", _builder.GetParams()["@_p_1"] );
             Assert.Equal( 1, _builder.GetParams()["@_p_2"] );
+        }
+
+        /// <summary>
+        /// 验证分页时未设置排序字段，抛出异常
+        /// </summary>
+        [Fact]
+        public void Test_42() {
+            var pager = new QueryParameter();
+            _builder.From( "a" ).Page( pager );
+            AssertHelper.Throws<ArgumentException>( () => _builder.ToSql(), LibraryResource.OrderIsEmptyForPage );
+        }
+
+        /// <summary>
+        /// 分页时设置了排序字段
+        /// </summary>
+        [Fact]
+        public void Test_43() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Test] " );
+            result.AppendLine( "Order By [a] " );
+            result.Append( "Offset @_p_0 Rows Fetch Next @_p_1 Rows Only" );
+
+            //执行
+            var pager = new QueryParameter { Order = "a" };
+            _builder.From( "Test" ).Page( pager );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 0, _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 20, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 设置条件 - 枚举
+        /// </summary>
+        [Fact]
+        public void Test_44() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Sample] As [s] " );
+            result.Append( "Where [s].[LogLevel]=@_p_0" );
+
+            //执行
+            _builder.From<Sample>( "s" ).Where<Sample>( t => t.LogLevel == LogLevel.Error );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 4, _builder.GetParams()["@_p_0"] );
+        }
+
+        /// <summary>
+        /// 设置条件 - 枚举 - 可空
+        /// </summary>
+        [Fact]
+        public void Test_45() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Sample] As [s] " );
+            result.Append( "Where [s].[NullableLogLevel]=@_p_0" );
+
+            //执行
+            _builder.From<Sample>( "s" ).Where<Sample>( t => t.NullableLogLevel == LogLevel.Error );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 4, _builder.GetParams()["@_p_0"] );
+        }
+
+        /// <summary>
+        /// 设置条件 - 枚举 - 参数对象属性为枚举
+        /// </summary>
+        [Fact]
+        public void Test_46() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Sample] As [s] " );
+            result.Append( "Where [s].[LogLevel]=@_p_0" );
+
+            //执行
+            var sample = new Sample { LogLevel = LogLevel.Error };
+            _builder.From<Sample>( "s" ).Where<Sample>( t => t.LogLevel == sample.LogLevel );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 4, _builder.GetParams()["@_p_0"] );
+        }
+
+        /// <summary>
+        /// 设置条件 - 枚举 - 参数对象属性为枚举 - 可空
+        /// </summary>
+        [Fact]
+        public void Test_47() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Sample] As [s] " );
+            result.Append( "Where [s].[NullableLogLevel]=@_p_0" );
+
+            //执行
+            var sample = new Sample { NullableLogLevel = LogLevel.Error };
+            _builder.From<Sample>( "s" ).Where<Sample>( t => t.NullableLogLevel == sample.NullableLogLevel );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 4, _builder.GetParams()["@_p_0"] );
+        }
+
+        /// <summary>
+        /// 设置子查询列 - 别名为空
+        /// </summary>
+        [Fact]
+        public void Test_48() {
+            //结果
+            var result = new String();
+            result.Append( "Select *," );
+            result.AppendLine( "(Select Count(*) " );
+            result.AppendLine( "From [Test2] " );
+            result.AppendLine( "Where [Name]=@_p_0) As testCount " );
+            result.AppendLine( "From [Test] " );
+            result.Append( "Where [Age]=@_p_1" );
+
+            //执行
+            var builder2 = _builder.New().Count().From( "Test2" ).Where( "Name", "a" );
+            _builder.Select( "*" ).AppendSelect("(").Select( builder2,"" ).AppendSelect( ") As testCount" ).From( "Test" ).Where( "Age", 1 );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 设置子查询列 - 带别名
+        /// </summary>
+        [Fact]
+        public void Test_49() {
+            //结果
+            var result = new String();
+            result.Append( "Select *," );
+            result.AppendLine( "(Select Count(*) " );
+            result.AppendLine( "From [Test2] " );
+            result.AppendLine( "Where [Name]=@_p_0) As [testCount] " );
+            result.AppendLine( "From [Test] " );
+            result.Append( "Where [Age]=@_p_1" );
+
+            //执行
+            var builder2 = _builder.New().Count().From( "Test2" ).Where( "Name", "a" );
+            _builder.Select( "*" ).Select( builder2, "testCount" ).From( "Test" ).Where( "Age", 1 );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 添加Join子查询
+        /// </summary>
+        [Fact]
+        public void Test_50() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Test] " );
+            result.AppendLine( "Join (Select * " );
+            result.AppendLine( "From [Test2] " );
+            result.AppendLine( "Where [Name]=@_p_0) As [t] " );
+            result.Append( "Where [Age]=@_p_1" );
+
+            //执行
+            var builder2 = _builder.New().From( "Test2" ).Where( "Name", "a" );
+            _builder.From( "Test" ).Join( builder2, "t" ).Where( "Age", 1 );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 设置Or条件 - lambda
+        /// </summary>
+        [Fact]
+        public void Test_51() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Sample] As [s] " );
+            result.Append( "Where [s].[Email] In (@_p_0,@_p_1)" );
+
+            //执行
+            var list = new List<string> { "a", "b" };
+            _builder.From<Sample>( "s" ).Or<Sample>( t => list.Contains( t.Email ) );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( "b", _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 设置子查询列 - 委托
+        /// </summary>
+        [Fact]
+        public void Test_52() {
+            //结果
+            var result = new String();
+            result.Append( "Select *," );
+            result.AppendLine( "(Select Count(*) " );
+            result.AppendLine( "From [Test2] " );
+            result.AppendLine( "Where [Name]=@_p_0) As [testCount] " );
+            result.AppendLine( "From [Test] " );
+            result.Append( "Where [Age]=@_p_1" );
+
+            //执行
+            _builder.Select( "*" ).Select( builder => {
+                    builder.Count().From( "Test2" ).Where( "Name", "a" );
+                }, "testCount" )
+            .From( "Test" ).Where( "Age", 1 );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 添加Join子查询 - 委托
+        /// </summary>
+        [Fact]
+        public void Test_53() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [Test] " );
+            result.AppendLine( "Join (Select * " );
+            result.AppendLine( "From [Test2] " );
+            result.AppendLine( "Where [Name]=@_p_0) As [t] " );
+            result.Append( "Where [Age]=@_p_1" );
+
+            //执行
+            _builder.From( "Test" ).Join( builder => {
+                builder.From( "Test2" ).Where( "Name", "a" );
+            }, "t" ).Where( "Age", 1 );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 测试聚合函数 - 求行数
+        /// </summary>
+        [Fact]
+        public void Test_54() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select Count(*) " );
+            result.AppendLine( "From [Test] " );
+            result.Append( "Where [Age]=@_p_0" );
+
+            //执行
+            _builder.Count().From( "Test" ).Where( "Age", 1 );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+        }
+
+        /// <summary>
+        /// 添加From子查询
+        /// </summary>
+        [Fact]
+        public void Test_55() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.Append( "From " );
+            result.AppendLine( "(Select Count(*) " );
+            result.AppendLine( "From [Test2] " );
+            result.AppendLine( "Where [Name]=@_p_0) As [test] " );
+            result.Append( "Where [Age]=@_p_1" );
+
+            //执行
+            var builder2 = _builder.New().Count().From( "Test2" ).Where( "Name", "a" );
+            _builder.From( builder2, "test" ).Where( "Age", 1 );
+            _output.WriteLine( _builder.ToSql() );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 添加Where子查询
+        /// </summary>
+        [Fact]
+        public void Test_56() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [abc].[Test] " );
+            result.Append( "Where [b2]<>" );
+            result.AppendLine( "(Select Count(*) " );
+            result.AppendLine( "From [Test2] " );
+            result.Append( "Where [Name]=@_p_0) " );
+            result.Append( "And [Age]=@_p_1" );
+
+            //执行
+            var builder2 = _builder.New().Count().From( "Test2" ).Where( "Name", "a" );
+            _builder.From( "abc.Test" ).Where( "b2", builder2,Operator.NotEqual ).Where( "Age", 1 );
+            _output.WriteLine( _builder.ToSql() );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
+        }
+
+        /// <summary>
+        /// 添加Where子查询 - 委托
+        /// </summary>
+        [Fact]
+        public void Test_57() {
+            //结果
+            var result = new String();
+            result.AppendLine( "Select * " );
+            result.AppendLine( "From [abc].[Test] " );
+            result.Append( "Where [b2]=" );
+            result.AppendLine( "(Select Count(*) " );
+            result.AppendLine( "From [Test2] " );
+            result.Append( "Where [Name]=@_p_0) " );
+            result.Append( "And [Age]=@_p_1" );
+
+            //执行
+            _builder.From( "abc.Test" ).Where( "b2", builder => {
+                builder.Count().From( "Test2" ).Where( "Name", "a" );
+            } ).Where( "Age", 1 );
+            _output.WriteLine( _builder.ToSql() );
+
+            //验证
+            Assert.Equal( result.ToString(), _builder.ToSql() );
+            Assert.Equal( 2, _builder.GetParams().Count );
+            Assert.Equal( "a", _builder.GetParams()["@_p_0"] );
+            Assert.Equal( 1, _builder.GetParams()["@_p_1"] );
         }
     }
 }
